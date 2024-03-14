@@ -38,12 +38,8 @@ Function Invoke-ListSites {
         @{ Name = 'siteid'; Expression = { $_.'site Id' } }
 
         #Temporary workaround for url as report is broken. 
-        if ($Type -eq 'SharePointSiteUsage') {
-            $URLs = (New-GraphGetRequest -uri "https://graph.microsoft.com/v1.0/sites?search=*&`$select=sharepointIds" -asapp $true -tenantid $TenantFilter).sharepointIds
-        } else {
-            #Get all OneDrive Urls
-            #$URLs = (New-GraphGetRequest -uri "https://graph.microsoft.com/v1.0/users?`$select=displayName,userPrincipalName" -tenantid $TenantFilter)
-        }
+        #This API is so stupid its great.
+        $URLs = (New-GraphGetRequest -uri 'https://graph.microsoft.com/v1.0/sites/getAllSites?$select=SharePointIds' -asapp $true -tenantid $TenantFilter).SharePointIds
 
         $GraphRequest = foreach ($site in $GraphRequest) {
             $site.URL = ($URLs | Where-Object { $_.siteId -eq $site.SiteId }).siteUrl
@@ -56,6 +52,10 @@ Function Invoke-ListSites {
         $StatusCode = [HttpStatusCode]::Forbidden
         $GraphRequest = $ErrorMessage
     }
+    if ($Request.query.URLOnly -eq 'true') {
+        $GraphRequest = $GraphRequest | Where-Object { $null -ne $_.URL }
+    }
+
     # Associate values to output bindings by calling 'Push-OutputBinding'.
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
             StatusCode = $StatusCode
